@@ -17,6 +17,24 @@ class _HomePageState extends State<HomePage> {
 
   bool isSigningOut = false; // Track whether sign-out process is ongoing
 
+  late String userId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Get the current user's ID when the page is initialized
+    getUserID();
+  }
+
+  void getUserID() {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      setState(() {
+        userId = user.uid;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -101,8 +119,10 @@ class _HomePageState extends State<HomePage> {
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream:
-                  FirebaseFirestore.instance.collection('devices').snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('devices')
+                  .where('id', isEqualTo: userId)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
@@ -117,7 +137,7 @@ class _HomePageState extends State<HomePage> {
                     snapshot.data!.docs.map((doc) {
                   return {
                     ...(doc.data() as Map<String, dynamic>),
-                    'id': doc.id
+                    'deviceId': doc.id
                   };
                 }).toList();
 
@@ -133,8 +153,10 @@ class _HomePageState extends State<HomePage> {
                       smartDeviceName: data[index]['name'],
                       iconPath: data[index]['icon'],
                       powerOn: data[index]['value'],
-                      onChanged: (value) =>
-                          powerSwitchChanged(value, index, data[index]['id']),
+                      /*  Get the value from the user when he toggles the switch
+                       Pass the new value to the powerSwitchChanged and get the device by its index and its created id */
+                      onChanged: (value) => powerSwitchChanged(
+                          value, index, data[index]['deviceId']),
                     );
                   },
                 );
