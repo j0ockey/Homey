@@ -82,16 +82,22 @@ class _LoginState extends State<Login> {
                       return null;
                     },
                   ),
-                  IconButton(
-                    icon: Icon(
-                      obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      color: Colors.grey,
+                  Positioned(
+                    top: 1,
+                    bottom: 20,
+                    child: IconButton(
+                      icon: Icon(
+                        obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          obscurePassword = !obscurePassword;
+                        });
+                      },
                     ),
-                    onPressed: () {
-                      setState(() {
-                        obscurePassword = !obscurePassword;
-                      });
-                    },
                   ),
                 ]),
                 const SizedBox(height: 10),
