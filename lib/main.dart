@@ -40,6 +40,18 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+          appBarTheme: AppBarTheme(
+              shadowColor: Colors.grey[50],
+              elevation: 4.5,
+              backgroundColor: const Color(0xFF72B4FF),
+              titleTextStyle: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              iconTheme: const IconThemeData(color: Colors.white))),
+      // color: const Color(0xFF72B4FF),
+
       home: FirebaseAuth.instance.currentUser == null
           ? const Login()
           : const HomePage(),

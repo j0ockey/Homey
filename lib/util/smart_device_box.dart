@@ -26,7 +26,7 @@ class SmartDeviceBox extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           color: powerOn
-              ? Colors.grey[900]
+              ? const Color(0xFF72B4FF)
               : const Color.fromARGB(44, 164, 167, 189),
         ),
         child: Padding(
@@ -37,7 +37,7 @@ class SmartDeviceBox extends StatelessWidget {
               // icon
               Image.asset(
                 iconPath,
-                height: 65,
+                height: 50,
                 color: powerOn ? Colors.white : Colors.grey.shade700,
               ),
 
@@ -51,7 +51,7 @@ class SmartDeviceBox extends StatelessWidget {
                         smartDeviceName,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: 15,
                           color: powerOn ? Colors.white : Colors.black,
                         ),
                       ),
@@ -59,6 +59,7 @@ class SmartDeviceBox extends StatelessWidget {
                     Transform.rotate(
                       angle: pi / 2,
                       child: CupertinoSwitch(
+                        activeColor: Colors.orange,
                         value: powerOn,
                         onChanged: onChanged,
                       ),
