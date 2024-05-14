@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:homey/auth/reset.dart';
 import '../components/custombuttonauth.dart';
 import '../components/customlogoauth.dart';
@@ -19,6 +20,9 @@ class _LoginState extends State<Login> {
   TextEditingController password = TextEditingController();
 
   GlobalKey<FormState> formstate = GlobalKey<FormState>();
+
+  bool isLoading = false; // Add this variable to track loading state
+  bool obscurePassword = true;
 
   @override
   Widget build(BuildContext context) {
@@ -47,13 +51,17 @@ class _LoginState extends State<Login> {
                 ),
                 Container(height: 10),
                 CustomTextForm(
-                  hinttext: "ُEnter Your Email",
+                  hinttext: "Enter Your Email",
                   mycontroller: email,
-                  // ignore: body_might_complete_normally_nullable
+                  // ignore: missing_return
                   validator: (val) {
                     if (val == "") {
                       return "* Required";
                     }
+                    if (!val!.contains('@')) {
+                      return "Invalid Email";
+                    }
+                    return null;
                   },
                 ),
                 Container(height: 10),
@@ -62,70 +70,91 @@ class _LoginState extends State<Login> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                 ),
                 Container(height: 10),
-                CustomTextForm(
-                  hinttext: "ُEnter Your Password",
-                  mycontroller: password,
-                  // ignore: body_might_complete_normally_nullable
-                  validator: (val) {
-                    if (val == "") {
-                      return "* Required";
-                    }
-                  },
-                ),
-                Container(height: 10),
-                InkWell(
-                  onTap: () async {
-                    if (email.text == '') {
-                      return showToast(message: 'You Have To Enter Your Email');
-                    }
-                    try {
-                      await FirebaseAuth.instance
-                          .sendPasswordResetEmail(email: email.text);
-                      showToast(message: 'An Email has been sent if verified');
-                      // ignore: unused_catch_clause
-                    } on FirebaseAuthException catch (e) {
-                      showToast(message: 'User Not Found');
-                    }
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 10, bottom: 20),
-                    alignment: Alignment.topRight,
-                    child: const Text(
-                      "Forgot Password ?",
-                      style: TextStyle(
-                        fontSize: 14,
-                      ),
+                Stack(alignment: Alignment.centerRight, children: [
+                  CustomTextForm(
+                    hinttext: "Enter Your Password",
+                    mycontroller: password,
+                    obscureText: obscurePassword,
+                    // ignore: missing_return
+                    validator: (val) {
+                      if (val == "") {
+                        return "* Required";
+                      }
+                      return null;
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.grey,
                     ),
+                    onPressed: () {
+                      setState(() {
+                        obscurePassword = !obscurePassword;
+                      });
+                    },
+                  ),
+                ]),
+                const SizedBox(height: 10),
+                Container(
+                  margin: const EdgeInsets.only(top: 5, bottom: 20, left: 10),
+                  alignment: Alignment.topLeft,
+                  child: const Text(
+                    "The Default Password is : 123456",
+                    style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
           ),
-          CustomButtonAuth(
-              title: "Login",
-              onPressed: () async {
-                if (formstate.currentState!.validate()) {
-                  try {
-                    // ignore: unused_local_variable
-                    final credential = await FirebaseAuth.instance
-                        .signInWithEmailAndPassword(
-                            email: email.text, password: password.text);
-                    Navigator.of(context).pushReplacementNamed("homepage");
-                  } on FirebaseAuthException catch (e) {
-                    print(e.code);
-                    if (e.code == 'invalid-credential') {
-                      showToast(message: 'Invalid Credentials');
-                    } else if (e.code == 'invalid-email') {
-                      showToast(message: 'Enter a valid email');
-                    } else if (e.code == 'too-many-requests') {
-                      print(e.code);
-                      showToast(message: 'Too Many Attempts');
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : CustomButtonAuth(
+                  title: "Login",
+                  onPressed: () async {
+                    if (formstate.currentState!.validate()) {
+                      setState(() {
+                        isLoading = true; // Show loading indicator
+                      });
+
+                      if (password.text == '123456') {
+                        setState(() {
+                          isLoading = false; // Hide loading indicator
+                        });
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) {
+                          return const Reset();
+                        }));
+                        email.text = '';
+                        password.text = '';
+                      } else {
+                        try {
+                          // ignore: unused_local_variable
+                          final credential = await FirebaseAuth.instance
+                              .signInWithEmailAndPassword(
+                                  email: email.text, password: password.text);
+                          Navigator.of(context)
+                              .pushReplacementNamed("homepage");
+                        } on FirebaseAuthException catch (e) {
+                          print(e.code);
+                          if (e.code == 'invalid-credential') {
+                            showToast(message: 'Invalid Credentials');
+                          } else {
+                            showToast(message: 'An error occurred');
+                          }
+                        } finally {
+                          setState(() {
+                            isLoading = false; // Hide loading indicator
+                          });
+                        }
+                      }
+                    } else {
+                      print("Can't Validate");
                     }
-                  }
-                } else {
-                  print("Can't Validate");
-                }
-              }),
+                  }),
           Container(height: 15),
           MaterialButton(
               height: 40,
@@ -137,10 +166,14 @@ class _LoginState extends State<Login> {
                 Navigator.push(context, MaterialPageRoute(builder: (context) {
                   return const Reset();
                 }));
+                email.text = '';
+                password.text = '';
               },
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Icon(Icons.lock_open), // Add lock icon
+                  SizedBox(width: 5),
                   Text("Reset Password"),
                 ],
               )),

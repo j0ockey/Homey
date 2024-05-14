@@ -2,8 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-// ignore: unused_import
-import 'package:homey/auth/login.dart';
 import '../util/smart_device_box.dart';
 
 class HomePage extends StatefulWidget {
@@ -14,9 +12,10 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // padding constants
+  // Padding constants
   final double horizontalPadding = 40;
-  final double verticalPadding = 25;
+
+  bool isSigningOut = false; // Track whether sign-out process is ongoing
 
   @override
   Widget build(BuildContext context) {
@@ -24,25 +23,48 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text("Homepage"),
         actions: [
-          IconButton(
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              Navigator.of(context)
-                  .pushNamedAndRemoveUntil("login", (route) => false);
-            },
-            icon: const Icon(Icons.exit_to_app),
-            iconSize: 30,
+          // Stack : to make the overlap on the icon button with the loading
+          Stack(
+            children: [
+              IconButton(
+                onPressed: isSigningOut
+                    ? null // Disable the button while sign-out process is ongoing
+                    : () async {
+                        setState(() {
+                          isSigningOut =
+                              true; // Set isSigningOut to true when sign-out process starts
+                        });
+                        await FirebaseAuth.instance.signOut();
+                        Navigator.of(context)
+                            .pushNamedAndRemoveUntil("login", (route) => false);
+                        setState(() {
+                          isSigningOut =
+                              false; // Set isSigningOut to false after sign-out process completes
+                        });
+                      },
+                icon: const Icon(Icons.exit_to_app),
+                iconSize: 30,
+              ),
+              if (isSigningOut)
+                const Positioned(
+                  top: 8,
+                  right: 8,
+                  child: CircularProgressIndicator(
+                    // A colored animation for hte indicator that doesn't change its color overtime
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // app bar
-
+          // App bar
           const SizedBox(height: 20),
 
-          // welcome home
+          // Welcome home
           Padding(
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
             child: Column(
@@ -63,17 +85,7 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 25),
 
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40.0),
-            child: Divider(
-              thickness: 1,
-              color: Color.fromARGB(255, 204, 204, 204),
-            ),
-          ),
-
-          const SizedBox(height: 25),
-
-          // smart devices grid
+          // Smart devices grid
           Padding(
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
             child: Text(
@@ -87,7 +99,6 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 10),
 
-          // grid
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream:
@@ -101,7 +112,7 @@ class _HomePageState extends State<HomePage> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Convert the snapshot data to a list
+                // Convert snapshot data into a list of maps
                 List<Map<String, dynamic>> data =
                     snapshot.data!.docs.map((doc) {
                   return {
@@ -135,9 +146,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // power button switched
+  // Power button switched
   void powerSwitchChanged(bool value, int index, String deviceId) {
-    // Update the value in Firestore
     CollectionReference devices =
         FirebaseFirestore.instance.collection('devices');
     devices.doc(deviceId).update({'value': value});
