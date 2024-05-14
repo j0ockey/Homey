@@ -84,7 +84,7 @@ class _LoginState extends State<Login> {
                   ),
                   Positioned(
                     top: 1,
-                    bottom: 20,
+                    bottom: 25,
                     child: IconButton(
                       icon: Icon(
                         obscurePassword
