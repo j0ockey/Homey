@@ -136,10 +136,11 @@ class _HomePageState extends State<HomePage> {
                 List<Map<String, dynamic>> data =
                     snapshot.data!.docs.map((doc) {
                   return {
+                    // Get the content of each document in a map and adds in its map a deviceId => {{...,deviceId: },{...,..},...}
                     ...(doc.data() as Map<String, dynamic>),
                     'deviceId': doc.id
                   };
-                }).toList();
+                }).toList(); //convert all to list so we can use it easily in the building
 
                 return GridView.builder(
                   itemCount: data.length,
@@ -153,7 +154,7 @@ class _HomePageState extends State<HomePage> {
                       smartDeviceName: data[index]['name'],
                       iconPath: data[index]['icon'],
                       powerOn: data[index]['value'],
-                      /*  Get the value from the user when he toggles the switch
+                      /*  Get the value from the user when he toggles the switch,
                        Pass the new value to the powerSwitchChanged and get the device by its index and its created id */
                       onChanged: (value) => powerSwitchChanged(
                           value, index, data[index]['deviceId']),
