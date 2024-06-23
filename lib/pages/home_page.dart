@@ -1,5 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../util/smart_device_box.dart';
@@ -17,7 +17,7 @@ class _HomePageState extends State<HomePage> {
 
   bool isSigningOut = false; // Track whether sign-out process is ongoing
 
-  late String userId;
+  String? userId;
 
   @override
   void initState() {
@@ -31,6 +31,7 @@ class _HomePageState extends State<HomePage> {
     if (user != null) {
       setState(() {
         userId = user.uid;
+        print('User ID: $userId'); // Debug print
       });
     }
   }
@@ -68,7 +69,7 @@ class _HomePageState extends State<HomePage> {
                   top: 8,
                   right: 8,
                   child: CircularProgressIndicator(
-                    // A colored animation for hte indicator that doesn't change its color overtime
+                    // A colored animation for the indicator that doesn't change its color overtime
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 ),
@@ -118,12 +119,9 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 10),
 
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('devices')
-                  .where('id', isEqualTo: userId)
-                  .snapshots(),
-              builder: (context, snapshot) {
+            child: StreamBuilder(
+              stream: FirebaseDatabase.instance.ref('/').onValue,
+              builder: (context, AsyncSnapshot<DatabaseEvent> snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
@@ -132,35 +130,51 @@ class _HomePageState extends State<HomePage> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Convert snapshot data into a list of maps
-                List<Map<String, dynamic>> data =
-                    snapshot.data!.docs.map((doc) {
-                  return {
-                    // Get the content of each document in a map and adds in its map a deviceId => {{...,deviceId: },{...,..},...}
-                    ...(doc.data() as Map<String, dynamic>),
-                    'deviceId': doc.id
-                  };
-                }).toList(); //convert all to list so we can use it easily in the building
+                // Ensure the data is available and properly cast it
+                if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
+                  Map<dynamic, dynamic> devicesMap =
+                      snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
 
-                return GridView.builder(
-                  itemCount: data.length,
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 1 / 1.3,
-                  ),
-                  itemBuilder: (context, index) {
-                    return SmartDeviceBox(
-                      smartDeviceName: data[index]['name'],
-                      iconPath: data[index]['icon'],
-                      powerOn: data[index]['value'],
-                      /*  Get the value from the user when he toggles the switch,
-                       Pass the new value to the powerSwitchChanged and get the device by its index and its created id */
-                      onChanged: (value) => powerSwitchChanged(
-                          value, index, data[index]['deviceId']),
-                    );
-                  },
-                );
+                  // Debug print of the raw data
+                  print('Devices Map: $devicesMap');
+
+                  // Filter devices based on userId
+                  List<Map<String, dynamic>> userDevices = [];
+                  devicesMap.forEach((deviceId, deviceData) {
+                    if (deviceData['users'] != null &&
+                        (deviceData['users'] as List<dynamic>)
+                            .contains(userId)) {
+                      userDevices.add({
+                        'deviceId': deviceId,
+                        ...Map<String, dynamic>.from(deviceData)
+                      });
+                    }
+                  });
+
+                  // Debug print of filtered devices
+                  print('User Devices: $userDevices');
+
+                  return GridView.builder(
+                    itemCount: userDevices.length,
+                    padding: const EdgeInsets.symmetric(horizontal: 25),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 1 / 1.3,
+                    ),
+                    itemBuilder: (context, index) {
+                      return SmartDeviceBox(
+                        smartDeviceName: userDevices[index]['name'],
+                        iconPath: userDevices[index]['icon'],
+                        powerOn: userDevices[index]['value'],
+                        onChanged: (value) => powerSwitchChanged(
+                            value, index, userDevices[index]['deviceId']),
+                      );
+                    },
+                  );
+                } else {
+                  return const Center(child: Text('No devices found'));
+                }
               },
             ),
           )
@@ -171,8 +185,7 @@ class _HomePageState extends State<HomePage> {
 
   // Power button switched
   void powerSwitchChanged(bool value, int index, String deviceId) {
-    CollectionReference devices =
-        FirebaseFirestore.instance.collection('devices');
-    devices.doc(deviceId).update({'value': value});
+    DatabaseReference deviceRef = FirebaseDatabase.instance.ref('/$deviceId');
+    deviceRef.update({'value': value});
   }
 }
